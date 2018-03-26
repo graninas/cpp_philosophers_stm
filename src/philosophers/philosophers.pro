@@ -21,3 +21,7 @@ unix {
 
 include($$PWD/../../lib/cpp_functional_core/cpp_functional_core.pri)
 include($$PWD/../../lib/cpp_stm/cpp_stm.pri)
+
+HEADERS += \
+    types.h \
+    stm.h
