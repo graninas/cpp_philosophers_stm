@@ -53,6 +53,31 @@ struct Philosopher
     TForkPair forks;
 };
 
+std::string printForkState(ForkState state)
+{
+    switch (state)
+    {
+    case ForkState::Free: return "Free";
+    case ForkState::Taken: return "Taken";
+    }
+    return "error";
+}
+
+std::string printFork(const Fork& fork)
+{
+    return fork.name + "=" + printForkState(fork.state);
+}
+
+std::string printActivity(Activity act)
+{
+    switch (act)
+    {
+    case Activity::Eating: return "Eating";
+    case Activity::Thinking: return "Thinking";
+    }
+    return "error";
+}
+
 } // namespace philosophers
 
 #endif PHILOSOPHERS_TYPES_H
