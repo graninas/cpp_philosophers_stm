@@ -35,7 +35,7 @@ void printSnapshot(std::mutex& logLock, const Snapshot& snapshot)
 {
     logLock.lock();
 
-    std::cout << "\nSnapshot #" << snapshot.number << std::endl;
+    std::cout << "\nSnapshot #" << snapshot.number << endl;
     for (const Shot& shot: snapshot.shots)
     {
         std::cout << "  [" << shot.name << "] (" << shot.cycle << ") "
@@ -52,8 +52,8 @@ Philosopher mkPhilosopher(Context& context,
                           const TFork& l,
                           const TFork& r)
 {
-    auto tActivity = stm::newTVarIO(context, Activity::Thinking);
-    auto tCycle    = stm::newTVarIO(context, 0);
+    auto tActivity = stm::newTVarIO(context, Activity::Thinking, "Philosopher " + name + " activity");
+    auto tCycle    = stm::newTVarIO(context, 0, "Philosopher " + name + " cycle");
     return Philosopher { name, tCycle, tActivity, TForkPair {l, r}};
 }
 
@@ -142,11 +142,15 @@ void philosopherWorker(PRt rt)
         auto actTime2 = dice();
 
         auto c = stm::atomically(rt.context, incrementCycle(rt.p));
-        logMsg(rt.logLock, "Philosopher " + rt.p.name + " next cycle: " + std::to_string(c));
+        logMsg(rt.logLock, "Philosopher " + rt.p.name
+               + " next cycle: " + std::to_string(c)
+               + " for " + std::to_string(actTime1) + " seconds. ");
         std::this_thread::sleep_for(std::chrono::microseconds(actTime1 * 1000 * 1000));
 
-        auto act1 = stm::atomically(rt.context, changeActivity(rt.p));
-        logMsg(rt.logLock, "Philosopher " + rt.p.name + " changed activity to: " + printActivity(act1));
+        auto newAct = stm::atomically(rt.context, changeActivity(rt.p));
+        logMsg(rt.logLock, "Philosopher " + rt.p.name
+               + " changed activity to: " + printActivity(newAct)
+               + " for " + std::to_string(actTime2) + " seconds. ");
         std::this_thread::sleep_for(std::chrono::microseconds(actTime2 * 1000 * 1000));
     }
 }
@@ -161,7 +165,7 @@ struct Rt
 void monitoringWorker(Rt rt)
 {
     std::cout << "Monitoring started." << endl;
-    for (int i = 1; i < 10; ++i)
+    for (int i = 1; i < 1000000; ++i)
     {
         std::chrono::microseconds interval(1000 * 1000 * 5);
         std::this_thread::sleep_for(interval);
@@ -176,11 +180,11 @@ void runPhilosophers()
 {
     stm::Context context;
 
-    TFork tFork1 = stm::newTVarIO(context, Fork {"1", ForkState::Free });
-    TFork tFork2 = stm::newTVarIO(context, Fork {"2", ForkState::Free });
-    TFork tFork3 = stm::newTVarIO(context, Fork {"3", ForkState::Free });
-    TFork tFork4 = stm::newTVarIO(context, Fork {"4", ForkState::Free });
-    TFork tFork5 = stm::newTVarIO(context, Fork {"5", ForkState::Free });
+    TFork tFork1 = stm::newTVarIO(context, Fork {"1", ForkState::Free }, " Fork 1");
+    TFork tFork2 = stm::newTVarIO(context, Fork {"2", ForkState::Free }, " Fork 2");
+    TFork tFork3 = stm::newTVarIO(context, Fork {"3", ForkState::Free }, " Fork 3");
+    TFork tFork4 = stm::newTVarIO(context, Fork {"4", ForkState::Free }, " Fork 4");
+    TFork tFork5 = stm::newTVarIO(context, Fork {"5", ForkState::Free }, " Fork 5");
 
     Philosophers philosophers =
         { mkPhilosopher(context, "1", tFork1, tFork2)
@@ -189,6 +193,8 @@ void runPhilosophers()
         , mkPhilosopher(context, "4", tFork4, tFork5)
         , mkPhilosopher(context, "5", tFork5, tFork1)
         };
+
+    std::cout << endl;
 
     auto logLock = std::mutex();
 
@@ -207,7 +213,7 @@ void runPhilosophers()
     {
         t.join();
     }
-    std::cout << "Philosophers ended.";
+    std::cout << "Philosophers ended." << endl;
 }
 
 int main()
