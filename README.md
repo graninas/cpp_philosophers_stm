@@ -2,7 +2,38 @@ Philosophers, C++ STM version
 =============================
 
 This is a showcase project of functional design and functional programming in C++.
-Philosophers task built using combinatorial STM made on Free monads.
+
+Philosophers task is solved using custom combinatorial monadic STM library.
+
+Installation
+------------
+
+Run in the project dir:
+
+```bash
+git clone --branch v0.2 git@github.com:graninas/cpp_functional_core.git ./lib/cpp_functional_core
+git clone --branch v0.1 git@github.com:graninas/cpp_stm.git ./lib/cpp_stm
+```
+
+Then build with Qt.
+
+Requirements
+------------
+
+- GCC 7.2
+
+See also: C++ STM
+-----------------
+
+Working library for Software Transactional Memory that is built using several FP techniques.
+
+- STM is monadic and combinatorial
+- It is very robust due to purely functional design
+- It is built on top of the custom Free monad
+- It operates by custom ADTs
+- It is usable despite it's experimental.
+
+https://github.com/graninas/cpp_stm
 
 See also: Amber
 ---------------
