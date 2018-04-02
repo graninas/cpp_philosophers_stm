@@ -23,23 +23,39 @@ const std::function<STML<ForkPair>(TForkPair)>
     return both(lm, rm, mkForkPair);
 };
 
+const std::function<bool(Fork)>
+isForkTaken = [](const Fork& fork)
+{
+    return fork.state == ForkState::Taken;
+};
+
+const std::function<Fork(Fork)>
+setForkTaken = [](const Fork& fork)
+{
+    return Fork {fork.name, ForkState::Taken};
+};
+
+const std::function<int(int)>
+increment = [](int i)
+{
+    return i + 1;
+};
+
+const std::function<Fork(Fork)>
+setFree = [](const Fork& fork)
+{
+    return Fork {fork.name, ForkState::Free};
+};
+
 const std::function<STML<bool>(TFork)>
 takeFork =
     [](const TFork& tFork)
 {
-    STML<Fork> mf = readTVar(tFork);
-    return bind<Fork, bool>(mf, [=](const Fork& fork)
-    {
-        if (fork.state == ForkState::Taken)
-        {
-            return pure(false);
-        }
-        else
-        {
-            STML<fp::Unit> m = writeTVar(tFork, Fork {fork.name, ForkState::Taken});
-            return bind<fp::Unit, bool>(m, [](auto){ return pure(true);});
-        }
-    });
+    STML<Fork>     m1 = readTVar(tFork);
+    STML<fp::Unit> m2 = modifyTVar(tFork, setForkTaken);
+    STML<bool>     m3 = sequence(m2, pure(true));
+    STML<bool>     m4 = ifThenElse(m1, pure(false), m3, isForkTaken);
+    return m4;
 };
 
 const std::function<STML<bool>(TForkPair)>
@@ -88,7 +104,7 @@ const std::function<STML<Activity>(Philosopher)>
 //                STML<fp::Unit> m3 = stm::when(m1, m2);
 //                STML<fp::Unit> m4 = stm::unless(m1, stm::mRetry);
 
-                STML<fp::Unit> m3 = stm::conditional(m1, m2, stm::mRetry);
+                STML<fp::Unit> m3 = stm::ifThenElse(m1, m2, stm::mRetry);
                 return sequence(m3, pure(Activity::Eating));
             }
             else
@@ -106,9 +122,7 @@ const std::function<STML<Activity>(Philosopher)>
 const std::function<STML<int>(Philosopher)>
     incrementCycle = [](const Philosopher& philosopher)
 {
-    std::function<int(int)> f = [](int i) { return i + 1; };
-    STML<fp::Unit> ma = modifyTVar(philosopher.cycle, f);
-    return stm::bind<fp::Unit, int>(ma, [=](const auto&) { return readTVar(philosopher.cycle); });
+    return modifyTVarRet(philosopher.cycle, increment);
 };
 
 } // namespace philosophers
