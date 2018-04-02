@@ -48,7 +48,7 @@ mkForkPair =
 struct Philosopher
 {
     std::string name;
-    stm::TVar<int> cycles;
+    stm::TVar<int> cycle;
     stm::TVar<Activity> activity;
     TForkPair forks;
 };

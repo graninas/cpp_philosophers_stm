@@ -49,56 +49,66 @@ const std::function<STML<bool>(TForkPair)>
     return both<bool, bool, bool>(lm, rm, [](bool l, bool r) { return l && r; });
 };
 
-//const std::function<STML<fp::Unit>(TFork)>
-//    putFork =
-//        [](const TFork& tFork)
-//{
-//    return modifyTVar(tFork,
-//                      [](const Fork& fork)
-//    {
-//        return Fork {fork.name, ForkState::Free};
-//    } );
-//};
+const std::function<STML<fp::Unit>(TFork)>
+    putFork =
+        [](const TFork& tFork)
+{
+    std::function<Fork(Fork)> f = [](const Fork& fork)
+    {
+        return Fork {fork.name, ForkState::Free};
+    };
+    return modifyTVar(tFork, f);
+};
 
-//const std::function<STML<fp::Unit>(TForkPair)>
-//    putForks =
-//        [](const TForkPair& forks)
-//{
-//    STML<fp::Unit> lm = putFork(forks.left);
-//    STML<fp::Unit> rm = putFork(forks.right);
-//    return bothVoided(lm, rm);
-//};
+const std::function<STML<fp::Unit>(TForkPair)>
+    putForks =
+        [](const TForkPair& forks)
+{
+    STML<fp::Unit> lm = putFork(forks.left);
+    STML<fp::Unit> rm = putFork(forks.right);
+    return bothVoided(lm, rm);
+};
 
-//const std::function<STML<Activity>(Philosopher)>
-//    changeActivity = [](const Philosopher& philosopher)
-//{
-//    STML<Activity> mAct = readTVar(philosopher.activity);
-//    return bind(mAct, [&](Activity activity)
-//    {
-//        switch (activity) {
-//        case Activity::Thinking:
-//            STML<bool> mTaken = takeForks(philosopher.forks);
-//            STML<fp::Unit> mNext1 = unless(mTaken, retry);
-//            STML<fp::Unit> mNext2 = bind(mNext1, [&](auto)
-//            {
-//                return writeTVar(philosopher.activity, Activity::Eating);
-//            });
-//            return voided(mNext2, pure(Activity::Eating));
+const std::function<STML<Activity>(Philosopher)>
+    changeActivity = [](const Philosopher& philosopher)
+{
+    STML<Activity> mAct = readTVar(philosopher.activity);
+    return bind<Activity, Activity>(mAct, [=](Activity activity)
+    {
+        STML<Activity> mAct2;
+        switch (activity)
+        {
+            case Activity::Thinking:
+            {
+                STML<bool> mTaken = takeForks(philosopher.forks);
+                auto mNext1 = unless(mTaken, mRetry);
+                STML<fp::Unit> mNext2 = bind<bool, fp::Unit>(mTaken, [&](auto)
+                {
+                    return writeTVar(philosopher.activity, Activity::Eating);
+                });
+                mAct2 = sequence(mNext2, pure(Activity::Eating));
+            }
+            break;
 
-//        case Activity::Eating:
-//            STML<fp::Unit> ma = putForks(philosopher.forks);
-//            STML<fp::Unit> mb = voided(ma, writeTVar(philosopher.activity, Activity::Thinking));
-//            return voided(mb, pure(Activity::Thinking));
-//        };
-//    });
-//};
+            case Activity::Eating:
+            {
+                STML<fp::Unit> ma = putForks(philosopher.forks);
+                STML<fp::Unit> mb = sequence(ma, writeTVar(philosopher.activity, Activity::Thinking));
+                mAct2 = sequence(mb, pure(Activity::Thinking));
+            }
+            break;
+        };
+        return mAct2;
+    });
+};
 
-//const std::function<STML<int>(Philosopher)>
-//    incrementCycles = [](const Philosopher& philosopher)
-//{
-//    STML<fp::Unit> ma = modifyTVar(philosopher.cycles, [](int i) { return i + 1; });
-//    return voided(ma, readTVar(philosopher.cycles));
-//};
+const std::function<STML<int>(Philosopher)>
+    incrementCycle = [](const Philosopher& philosopher)
+{
+    std::function<int(int)> f = [](int i) { return i + 1; };
+    STML<fp::Unit> ma = modifyTVar(philosopher.cycle, f);
+    return stm::bind<fp::Unit, int>(ma, [=](const auto&) { return readTVar(philosopher.cycle); });
+};
 
 } // namespace philosophers
 

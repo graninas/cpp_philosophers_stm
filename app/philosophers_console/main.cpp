@@ -3,6 +3,7 @@
 #include <list>
 #include <thread>
 #include <chrono>
+#include <random>
 
 using namespace std;
 
@@ -18,7 +19,7 @@ using Philosophers = std::list<Philosopher>;
 struct Shot
 {
     std::string name;
-    int cycles;
+    int cycle;
     Activity activity;
     Fork leftFork;
     Fork rightFork;
@@ -37,7 +38,7 @@ void printSnapshot(std::mutex& logLock, const Snapshot& snapshot)
     std::cout << "\nSnapshot #" << snapshot.number << std::endl;
     for (const Shot& shot: snapshot.shots)
     {
-        std::cout << "  [" << shot.name << "] (" << shot.cycles << ") "
+        std::cout << "  [" << shot.name << "] (" << shot.cycle << ") "
                   << printActivity(shot.activity) << ", "
                   << printFork(shot.leftFork) << ":"
                   << printFork(shot.rightFork) << endl;
@@ -52,8 +53,8 @@ Philosopher mkPhilosopher(Context& context,
                           const TFork& r)
 {
     auto tActivity = stm::newTVarIO(context, Activity::Thinking);
-    auto tCycles   = stm::newTVarIO(context, 0);
-    return Philosopher { name, tCycles, tActivity, TForkPair {l, r}};
+    auto tCycle    = stm::newTVarIO(context, 0);
+    return Philosopher { name, tCycle, tActivity, TForkPair {l, r}};
 }
 
 stm::STML<Shot> takeShot(const Philosopher& p)
@@ -61,7 +62,7 @@ stm::STML<Shot> takeShot(const Philosopher& p)
     // TODO: readMany
     return stm::bind<Activity, Shot>(stm::readTVar(p.activity),             [=](Activity act)
     {
-        return stm::bind<int, Shot>(stm::readTVar(p.cycles),                [=](int cycles)
+        return stm::bind<int, Shot>(stm::readTVar(p.cycle),                 [=](int cycle)
         {
             return stm::bind<Fork, Shot>(stm::readTVar(p.forks.left),       [=](Fork l)
             {
@@ -69,7 +70,7 @@ stm::STML<Shot> takeShot(const Philosopher& p)
                 {
                     return stm::pure(Shot {
                                          p.name,
-                                         cycles,
+                                         cycle,
                                          act,
                                          l,
                                          r
@@ -115,6 +116,41 @@ Snapshot takeSnapshot(Context& context, const Philosophers& ps, int number)
     return Snapshot { snapshots, number };
 }
 
+void logMsg(std::mutex& logLock, const std::string& s)
+{
+    logLock.lock();
+    std::cout << s << endl;
+    logLock.unlock();
+}
+
+struct PRt
+{
+    std::mutex& logLock;
+    Context& context;
+    Philosopher& p;
+};
+
+void philosopherWorker(PRt rt)
+{
+    std::default_random_engine generator;
+    std::uniform_int_distribution<int> distribution(std::uniform_int_distribution<int>(1, 5));
+    utils::Dice dice (std::bind(distribution, generator));
+
+    while (true)
+    {
+        auto actTime1 = dice();
+        auto actTime2 = dice();
+
+        auto c = stm::atomically(rt.context, incrementCycle(rt.p));
+        logMsg(rt.logLock, "Philosopher " + rt.p.name + " next cycle: " + std::to_string(c));
+        std::this_thread::sleep_for(std::chrono::microseconds(actTime1 * 1000 * 1000));
+
+        auto act1 = stm::atomically(rt.context, changeActivity(rt.p));
+        logMsg(rt.logLock, "Philosopher " + rt.p.name + " changed activity to: " + printActivity(act1));
+        std::this_thread::sleep_for(std::chrono::microseconds(actTime2 * 1000 * 1000));
+    }
+}
+
 struct Rt
 {
     std::mutex& logLock;
@@ -122,7 +158,7 @@ struct Rt
     Philosophers& philosophers;
 };
 
-void monitoring(Rt rt)
+void monitoringWorker(Rt rt)
 {
     std::cout << "Monitoring started." << endl;
     for (int i = 1; i < 10; ++i)
@@ -158,11 +194,20 @@ void runPhilosophers()
 
     auto snapshot = takeSnapshot(context, philosophers, 0);
     printSnapshot(logLock, snapshot);
-    std::thread t = std::thread(monitoring, Rt { logLock, context, philosophers });
-    t.join();
 
-//    std::chrono::microseconds interval(1000 * 1000 * 5 * 10);
-//    std::this_thread::sleep_for(interval);
+    std::vector<std::thread> threads;
+    threads.push_back(std::thread(monitoringWorker, Rt { logLock, context, philosophers }));
+
+    for (Philosopher& p: philosophers)
+    {
+        threads.push_back(std::thread(philosopherWorker, PRt {logLock, context, p}));
+    }
+
+    for (auto& t: threads)
+    {
+        t.join();
+    }
+    std::cout << "Philosophers ended.";
 }
 
 int main()
