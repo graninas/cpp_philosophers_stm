@@ -47,48 +47,39 @@ setFree = [](const Fork& fork)
     return Fork {fork.name, ForkState::Free};
 };
 
-const std::function<STML<bool>(TFork)>
-takeFork =
-    [](const TFork& tFork)
+STML<bool> takeFork(const TFork& tFork)
 {
     STML<Fork>     m1 = readTVar(tFork);
     STML<fp::Unit> m2 = modifyTVar(tFork, setForkTaken);
     STML<bool>     m3 = sequence(m2, pure(true));
     STML<bool>     m4 = ifThenElse(m1, pure(false), m3, isForkTaken);
     return m4;
-};
+}
 
-const std::function<STML<bool>(TForkPair)>
-    takeForks =
-        [](const TForkPair& forks)
+STML<bool> takeForks(const TForkPair& forks)
 {
     STML<bool> lm = takeFork(forks.left);
     STML<bool> rm = takeFork(forks.right);
     return both<bool, bool, bool>(lm, rm, [](bool l, bool r) { return l && r; });
-};
+}
 
-const std::function<STML<fp::Unit>(TFork)>
-    putFork =
-        [](const TFork& tFork)
+STML<fp::Unit> putFork (const TFork& tFork)
 {
     std::function<Fork(Fork)> f = [](const Fork& fork)
     {
         return Fork {fork.name, ForkState::Free};
     };
     return modifyTVar(tFork, f);
-};
+}
 
-const std::function<STML<fp::Unit>(TForkPair)>
-    putForks =
-        [](const TForkPair& forks)
+STML<fp::Unit> putForks(const TForkPair& forks)
 {
     STML<fp::Unit> lm = putFork(forks.left);
     STML<fp::Unit> rm = putFork(forks.right);
     return bothVoided(lm, rm);
-};
+}
 
-const std::function<STML<Activity>(Philosopher)>
-    changeActivity = [](const Philosopher& philosopher)
+STML<Activity> changeActivity(const Philosopher& philosopher)
 {
 //    std::cout << "Philosopher " << philosopher.name << ": trying to change activity." << std::endl;
     STML<Activity> mAct   = readTVar(philosopher.activity);
@@ -117,7 +108,7 @@ const std::function<STML<Activity>(Philosopher)>
             }
         });
     return newAct;
-};
+}
 
 const std::function<STML<int>(Philosopher)>
     incrementCycle = [](const Philosopher& philosopher)

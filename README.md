@@ -12,7 +12,7 @@ Run in the project dir:
 
 ```bash
 git clone --branch v0.2 git@github.com:graninas/cpp_functional_core.git ./lib/cpp_functional_core
-git clone --branch v0.1 git@github.com:graninas/cpp_stm.git ./lib/cpp_stm
+git clone --branch v0.1 git@github.com:graninas/cpp_stm_free.git ./lib/cpp_stm
 ```
 
 Then build with Qt.
@@ -22,8 +22,8 @@ Requirements
 
 - GCC 7.2
 
-See also: C++ STM
------------------
+See also: Monadic C++ STM
+-------------------------
 
 Working library for Software Transactional Memory that is built using several FP techniques.
 
@@ -33,7 +33,7 @@ Working library for Software Transactional Memory that is built using several FP
 - It operates by custom ADTs
 - It is usable despite it's experimental.
 
-https://github.com/graninas/cpp_stm
+https://github.com/graninas/cpp_stm_free
 
 See also: Amber
 ---------------
