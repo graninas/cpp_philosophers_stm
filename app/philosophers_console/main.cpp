@@ -33,7 +33,7 @@ struct Snapshot
 
 void printSnapshot(std::mutex& logLock, const Snapshot& snapshot)
 {
-    logLock.lock();
+    std::lock_guard g(logLock);
 
     std::cout << "\nSnapshot #" << snapshot.number << endl;
     for (const Shot& shot: snapshot.shots)
@@ -43,8 +43,6 @@ void printSnapshot(std::mutex& logLock, const Snapshot& snapshot)
                   << printFork(shot.leftFork) << ":"
                   << printFork(shot.rightFork) << endl;
     }
-
-    logLock.unlock();
 }
 
 Philosopher mkPhilosopher(Context& context,
@@ -118,9 +116,8 @@ Snapshot takeSnapshot(Context& context, const Philosophers& ps, int number)
 
 void logMsg(std::mutex& logLock, const std::string& s)
 {
-    logLock.lock();
+    std::lock_guard g(logLock);
     std::cout << s << endl;
-    logLock.unlock();
 }
 
 struct PRt

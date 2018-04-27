@@ -1,8 +1,6 @@
 #ifndef PHILOSOPHERS_STM_H
 #define PHILOSOPHERS_STM_H
 
-#include <iostream>
-
 #include <functional>
 #include <any>
 #include <stm.h>
@@ -49,11 +47,12 @@ setFree = [](const Fork& fork)
 
 STML<bool> takeFork(const TFork& tFork)
 {
-    STML<Fork>     m1 = readTVar(tFork);
-    STML<fp::Unit> m2 = modifyTVar(tFork, setForkTaken);
-    STML<bool>     m3 = sequence(m2, pure(true));
-    STML<bool>     m4 = ifThenElse(m1, pure(false), m3, isForkTaken);
-    return m4;
+    STML<bool>     taken   = withTVar(tFork, isForkTaken);
+    STML<fp::Unit> newFork = modifyTVar(tFork, setForkTaken);
+    STML<bool>     success = sequence(newFork, pure(true));
+    STML<bool>     fail    = pure(false);
+    STML<bool>     result  = ifThenElse(taken, fail, success);
+    return result;
 }
 
 STML<bool> takeForks(const TForkPair& forks)
@@ -63,7 +62,7 @@ STML<bool> takeForks(const TForkPair& forks)
     return both<bool, bool, bool>(lm, rm, [](bool l, bool r) { return l && r; });
 }
 
-STML<fp::Unit> putFork (const TFork& tFork)
+STML<fp::Unit> putFork(const TFork& tFork)
 {
     std::function<Fork(Fork)> f = [](const Fork& fork)
     {
@@ -81,30 +80,22 @@ STML<fp::Unit> putForks(const TForkPair& forks)
 
 STML<Activity> changeActivity(const Philosopher& philosopher)
 {
-//    std::cout << "Philosopher " << philosopher.name << ": trying to change activity." << std::endl;
     STML<Activity> mAct   = readTVar(philosopher.activity);
     STML<Activity> newAct = bind<Activity, Activity>(mAct, [=](Activity act)
         {
             if (act == Activity::Thinking)
             {
-//                std::cout << "Philosopher " << philosopher.name << ": was Thinking" << std::endl;
-                STML<bool>     m1 = takeForks(philosopher.forks);
-                STML<fp::Unit> m2 = writeTVar(philosopher.activity, Activity::Eating);
-
-//              Twice taking forks!!!
-//                STML<fp::Unit> m3 = stm::when(m1, m2);
-//                STML<fp::Unit> m4 = stm::unless(m1, stm::mRetry);
-
-                STML<fp::Unit> m3 = stm::ifThenElse(m1, m2, stm::mRetry);
-                return sequence(m3, pure(Activity::Eating));
+                STML<bool>     taken   = takeForks(philosopher.forks);
+                STML<fp::Unit> changed = writeTVar(philosopher.activity, Activity::Eating);
+                STML<fp::Unit> result  = ifThenElse(taken, changed, mRetry);
+                return sequence(result, pure(Activity::Eating));
             }
             else
             {
-//                std::cout << "Philosopher " << philosopher.name << ": was Eating" << std::endl;
-                STML<fp::Unit> m1 = putForks(philosopher.forks);
-                STML<fp::Unit> m2 = writeTVar(philosopher.activity, Activity::Thinking);
-                STML<fp::Unit> m3 = stm::sequence(m1, m2);
-                return sequence(m3, pure(Activity::Thinking));
+                STML<fp::Unit> freed   = putForks(philosopher.forks);
+                STML<fp::Unit> changed = writeTVar(philosopher.activity, Activity::Thinking);
+                STML<fp::Unit> result  = stm::sequence(freed, changed);
+                return sequence(result, pure(Activity::Thinking));
             }
         });
     return newAct;
