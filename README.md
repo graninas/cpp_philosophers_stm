@@ -12,7 +12,7 @@ Run in the project dir:
 
 ```bash
 git clone --branch v0.2 git@github.com:graninas/cpp_functional_core.git ./lib/cpp_functional_core
-git clone --branch v0.1 git@github.com:graninas/cpp_stm_free.git ./lib/cpp_stm
+git clone --branch v0.2 git@github.com:graninas/cpp_stm_free.git ./lib/cpp_stm
 ```
 
 Then build with Qt.
