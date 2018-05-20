@@ -11,8 +11,7 @@ Installation
 Run in the project dir:
 
 ```bash
-git clone --branch v0.2 git@github.com:graninas/cpp_functional_core.git ./lib/cpp_functional_core
-git clone --branch v0.3 git@github.com:graninas/cpp_stm_free.git ./lib/cpp_stm
+git clone --branch v0.4 git@github.com:graninas/cpp_stm_free.git ./lib/cpp_stm
 ```
 
 Then build with Qt.
@@ -34,6 +33,13 @@ Working library for Software Transactional Memory that is built using several FP
 - It is usable despite it's experimental.
 
 https://github.com/graninas/cpp_stm_free
+
+See also: STM samples
+---------------------
+
+More samples of cpp_stm_free usage.
+
+https://github.com/graninas/stm_samples
 
 See also: Amber
 ---------------

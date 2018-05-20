@@ -17,6 +17,5 @@ INCLUDEPATH += /usr/include/c++/7
 SOURCES += \
     main.cpp
 
-include($$PWD/../../lib/cpp_functional_core/cpp_functional_core.pri)
 include($$PWD/../../lib/cpp_stm/cpp_stm.pri)
 include($$PWD/../../src/philosophers/philosophers.pri)
