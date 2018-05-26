@@ -12,25 +12,16 @@ namespace philosophers
 
 using namespace stm;
 
-const std::function<STML<ForkPair>(TForkPair)>
-    readForks =
-        [](const TForkPair& forks)
-{
-    STML<Fork> lm = readTVar(forks.left);
-    STML<Fork> rm = readTVar(forks.right);
-    return both(lm, rm, mkForkPair);
-};
-
-const std::function<bool(Fork)>
-isForkTaken = [](const Fork& fork)
-{
-    return fork.state == ForkState::Taken;
-};
-
 const std::function<Fork(Fork)>
 setForkTaken = [](const Fork& fork)
 {
     return Fork {fork.name, ForkState::Taken};
+};
+
+const std::function<Fork(Fork)>
+setForkFree = [](const Fork& fork)
+{
+    return Fork {fork.name, ForkState::Free};
 };
 
 const std::function<int(int)>
@@ -39,36 +30,32 @@ increment = [](int i)
     return i + 1;
 };
 
-const std::function<Fork(Fork)>
-setFree = [](const Fork& fork)
+STML<Unit> takeFork(const TFork& tFork)
 {
-    return Fork {fork.name, ForkState::Free};
-};
-
-STML<bool> takeFork(const TFork& tFork)
-{
-    STML<bool> taken   = withTVar(tFork, isForkTaken);
-    STML<Unit> newFork = modifyTVar(tFork, setForkTaken);
-    STML<bool> success = sequence(newFork, pure(true));
-    STML<bool> fail    = pure(false);
-    STML<bool> result  = ifThenElse(taken, fail, success);
-    return result;
+    // Warning! Passing closure by ref leads to crash.
+    return withTVar<Fork, Unit>(tFork, [=](const Fork& fork)
+    {
+       if (fork.state == ForkState::Free)
+       {
+           return modifyTVar<Fork>(tFork, setForkTaken);
+       }
+       else
+       {
+           return retry<Unit>();
+       }
+    });
 }
 
-STML<bool> takeForks(const TForkPair& forks)
+STML<Unit> takeForks(const TForkPair& forks)
 {
-    STML<bool> lm = takeFork(forks.left);
-    STML<bool> rm = takeFork(forks.right);
-    return both<bool, bool, bool>(lm, rm, [](bool l, bool r) { return l && r; });
+    STML<Unit> lm = takeFork(forks.left);
+    STML<Unit> rm = takeFork(forks.right);
+    return sequence(lm, rm);
 }
 
 STML<Unit> putFork(const TFork& tFork)
 {
-    std::function<Fork(Fork)> f = [](const Fork& fork)
-    {
-        return Fork {fork.name, ForkState::Free};
-    };
-    return modifyTVar(tFork, f);
+    return modifyTVar<Fork>(tFork, setForkFree);
 }
 
 STML<Unit> putForks(const TForkPair& forks)
@@ -80,31 +67,27 @@ STML<Unit> putForks(const TForkPair& forks)
 
 STML<Activity> changeActivity(const Philosopher& philosopher)
 {
-    STML<Activity> mAct   = readTVar(philosopher.activity);
-    STML<Activity> newAct = bind<Activity, Activity>(mAct, [=](Activity act)
+    STML<Activity> mAct = readTVar(philosopher.activity);
+    STML<Unit> changed = bind<Activity, Unit>(mAct, [=](Activity oldAct)
         {
-            if (act == Activity::Thinking)
+            if (oldAct == Activity::Thinking)
             {
-                STML<bool> taken   = takeForks(philosopher.forks);
-                STML<Unit> changed = writeTVar(philosopher.activity, Activity::Eating);
-                STML<Unit> result  = ifThenElse(taken, changed, mRetry);
-                return sequence(result, pure(Activity::Eating));
+                STML<Unit> taken = takeForks(philosopher.forks);
+                return sequence<Unit, Unit>(taken, writeTVar<Activity>(philosopher.activity, Activity::Eating));
             }
             else
             {
-                STML<Unit> freed   = putForks(philosopher.forks);
-                STML<Unit> changed = writeTVar(philosopher.activity, Activity::Thinking);
-                STML<Unit> result  = stm::sequence(freed, changed);
-                return sequence(result, pure(Activity::Thinking));
+                STML<Unit> freed = putForks(philosopher.forks);
+                return sequence<Unit, Unit>(freed, writeTVar<Activity>(philosopher.activity, Activity::Thinking));
             }
         });
-    return newAct;
+    return sequence<Unit, Activity>(changed, readTVar<Activity>(philosopher.activity));
 }
 
 const std::function<STML<int>(Philosopher)>
-    incrementCycle = [](const Philosopher& philosopher)
+incrementCycle = [](const Philosopher& philosopher)
 {
-    return modifyTVarRet(philosopher.cycle, increment);
+    return modifyTVarRet<int>(philosopher.cycle, increment);
 };
 
 } // namespace philosophers

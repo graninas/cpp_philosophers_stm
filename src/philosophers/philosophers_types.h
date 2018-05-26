@@ -80,4 +80,4 @@ std::string printActivity(Activity act)
 
 } // namespace philosophers
 
-#endif PHILOSOPHERS_TYPES_H
+#endif // PHILOSOPHERS_TYPES_H
