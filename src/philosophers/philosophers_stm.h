@@ -3,7 +3,7 @@
 
 #include <functional>
 #include <any>
-#include <stm.h>
+#include <stm/stm.h>
 
 #include "philosophers_types.h"
 

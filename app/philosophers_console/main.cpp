@@ -7,7 +7,7 @@
 
 using namespace std;
 
-#include <stm.h>
+#include <stm/stm.h>
 
 #include "philosophers_types.h"
 #include "philosophers_stm.h"

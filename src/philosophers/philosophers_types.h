@@ -4,7 +4,7 @@
 #include <string>
 #include <functional>
 
-#include <tvar.h>
+#include <stm/tvar.h>
 
 namespace philosophers
 {
